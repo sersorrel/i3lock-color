@@ -259,6 +259,7 @@ bool pass_media_keys = false;
 bool pass_screen_keys = false;
 bool pass_power_keys = false;
 bool pass_volume_keys = false;
+bool pass_textier_keys = false;
 bool special_passthrough = false;
 
 // for the rendering thread, so we can clean it up
@@ -691,13 +692,16 @@ static void handle_key_press(xcb_key_press_event_t *event) {
     xkb_keysym_t ksym;
     char buffer[128];
     int n;
-    bool ctrl;
+    bool ctrl, shift, alt, super;
 #if XKBCOMPOSE == 1
     bool composed = false;
 #endif
 
     ksym = xkb_state_key_get_one_sym(xkb_state, event->detail);
     ctrl = xkb_state_mod_name_is_active(xkb_state, XKB_MOD_NAME_CTRL, XKB_STATE_MODS_DEPRESSED);
+    shift = xkb_state_mod_name_is_active(xkb_state, XKB_MOD_NAME_SHIFT, XKB_STATE_MODS_DEPRESSED);
+    alt = xkb_state_mod_name_is_active(xkb_state, XKB_MOD_NAME_ALT, XKB_STATE_MODS_DEPRESSED);
+    super = xkb_state_mod_name_is_active(xkb_state, XKB_MOD_NAME_LOGO, XKB_STATE_MODS_DEPRESSED);
 
     /* The buffer will be null-terminated, so n >= 2 for 1 actual character. */
     memset(buffer, '\0', sizeof(buffer));
@@ -775,6 +779,12 @@ static void handle_key_press(xcb_key_press_event_t *event) {
                 send_key_to_root(event, true);
                 return;
         }
+    }
+
+    // textier
+    if (pass_textier_keys && ctrl && shift && alt && super) {
+        send_key_to_root(event, false);
+        return;
     }
 
     // return/enter/etc
@@ -1575,6 +1585,7 @@ int main(int argc, char *argv[]) {
         {"pass-power-keys", no_argument, NULL, 603},
         {"pass-volume-keys", no_argument, NULL, 604},
         {"special-passthrough", no_argument, NULL, 605},
+        {"pass-textier-keys", no_argument, NULL, 650},
 
         // bar indicator stuff
         {"bar-indicator", no_argument, NULL, 700},
@@ -2140,6 +2151,9 @@ int main(int argc, char *argv[]) {
 				break;
             case 605:
                 special_passthrough = true;
+                break;
+            case 650:
+                pass_textier_keys = true;
                 break;
 
 			// Bar indicator
