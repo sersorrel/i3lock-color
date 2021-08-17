@@ -241,6 +241,8 @@ extern char bar_width_expr[32];
 extern bool bar_bidirectional;
 extern bool bar_reversed;
 
+extern bool pwd_box_enabled;
+
 static cairo_font_face_t *font_faces[6] = {
     NULL,
     NULL,
@@ -415,6 +417,66 @@ static void draw_bar(cairo_t *ctx, double bar_x, double bar_y, double bar_width,
     }
 
     cairo_restore(ctx);
+}
+
+static void draw_pwd_box(cairo_t *ctx, double ind_x, double ind_y) {
+    if (unlock_indicator) {
+        // Draw the password entry box.
+        // TODO: don't hardcode the offsets.
+        int pwd_box_x = 0, pwd_box_y = 200, pwd_box_width = 500, pwd_box_height = 48, pwd_box_corner_radius = 8;
+        cairo_new_sub_path(ctx);
+        {
+            // https://cairographics.org/samples/rounded_rectangle/
+            int x = ind_x + pwd_box_x - (pwd_box_width/2), y = ind_y + pwd_box_y - (pwd_box_height/2), width = pwd_box_width, height = pwd_box_height, radius = pwd_box_corner_radius;
+            // top-right corner
+            cairo_arc(ctx, x + width - radius, y          + radius, radius, -1.57079633 /*-90deg*/, 0.0);
+            // bottom-right corner
+            cairo_arc(ctx, x + width - radius, y + height - radius, radius, 0.0, 1.57079633 /*90deg*/);
+            // bottom-left corner
+            cairo_arc(ctx, x         + radius, y + height - radius, radius, 1.57079633 /*90deg*/, 3.14159265 /*180deg*/);
+            // top-left corner
+            cairo_arc(ctx, x         + radius, y          + radius, radius, 3.14159265 /*180deg*/, 4.71238898 /*270deg*/);
+        }
+        cairo_close_path(ctx);
+        switch (auth_state) {
+            case STATE_AUTH_IDLE:
+            case STATE_AUTH_WRONG:
+                cairo_set_source_rgba(ctx, 0.1, 0.1, 0.1, 0.8);
+                break;
+            case STATE_AUTH_VERIFY:
+            case STATE_AUTH_LOCK:
+                cairo_set_source_rgba(ctx, 0.4, 0.4, 0.4, 0.8);
+                break;
+            default:
+                cairo_set_source_rgba(ctx, 0.3, 0.0, 0.0, 0.8);
+                break;
+        }
+        cairo_fill_preserve(ctx);
+        // Draw the border.
+        switch (auth_state) {
+            case STATE_AUTH_IDLE:
+            case STATE_AUTH_VERIFY:
+            case STATE_AUTH_LOCK:
+                cairo_set_source_rgba(ctx, 0.5, 0.5, 0.5, 0.8);
+                break;
+            case STATE_AUTH_WRONG:
+            default:
+                cairo_set_source_rgba(ctx, 0.6, 0.2, 0.2, 0.8);
+                break;
+        }
+        cairo_set_line_width(ctx, 2.0);
+        cairo_stroke(ctx);
+        if (input_position > 0) {
+            // Draw the dots.
+            int r = 4;
+            int x0 = ind_x + pwd_box_x - (pwd_box_width/2) + (pwd_box_height/2), y = ind_y + pwd_box_y;
+            for (int the_dot = 0; the_dot < input_position; the_dot++) {
+                cairo_arc(ctx, x0 + (the_dot*3*r), y, r, 0, 6.28318531 /*360deg*/);
+                cairo_set_source_rgb(ctx, 1.0, 1.0, 1.0);
+                cairo_fill(ctx);
+            }
+        }
+    }
 }
 
 static void draw_indic(cairo_t *ctx, double ind_x, double ind_y) {
@@ -618,6 +680,9 @@ static DrawData create_draw_data() {
 }
 
 static void draw_elements(cairo_t *const ctx, DrawData const *const draw_data) {
+    if (pwd_box_enabled) {
+        draw_pwd_box(ctx, draw_data->indicator_x, draw_data->indicator_y);
+    }
     // indicator stuff
     if (!bar_enabled) {
         draw_indic(ctx, draw_data->indicator_x, draw_data->indicator_y);

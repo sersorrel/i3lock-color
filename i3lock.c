@@ -292,6 +292,8 @@ char bar_width_expr[32] = ""; // empty string means full width based on bar orie
 bool bar_bidirectional = false;
 bool bar_reversed = false;
 
+bool pwd_box_enabled = false;
+
 /* isutf, u8_dec © 2005 Jeff Bezanson, public domain */
 #define isutf(c) (((c)&0xC0) != 0x80)
 
@@ -1587,6 +1589,8 @@ int main(int argc, char *argv[]) {
         {"bar-count", required_argument, NULL, 710},
         {"bar-total-width", required_argument, NULL, 711},
 
+        {"password-box", no_argument, NULL, 800},
+
         // misc.
         {"redraw-thread", no_argument, NULL, 900},
         {"refresh-rate", required_argument, NULL, 901},
@@ -2202,6 +2206,10 @@ int main(int argc, char *argv[]) {
                 if (sscanf(arg, "%31s", bar_width_expr) != 1) {
                     errx(1, "missing argument for bar-total-width\n");
                 }
+                break;
+
+            case 800:
+                pwd_box_enabled = true;
                 break;
 
 			// Misc
